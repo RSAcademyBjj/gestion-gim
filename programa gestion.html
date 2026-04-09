@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>RS ACADEMY - Gestión BJJ</title>
+    <style>
+        :root { --primary-light: #38bdf8; --primary-dark: #1e40af; --dark-bg: #0f172a; --danger: #ef4444; --glass: rgba(255, 255, 255, 0.96); --store: #f59e0b; --cash: #10b981; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; min-height: 100vh; background: linear-gradient(rgba(15, 23, 42, 0.8), rgba(15, 23, 42, 0.8)), url('https://images.unsplash.com/photo-1555597673-b21d5c935865?q=80&w=2000&auto=format&fit=crop'); background-size: cover; background-position: center; background-attachment: fixed; color: var(--dark-bg); padding: 20px; }
+        .container { max-width: 1300px; margin: auto; background: var(--glass); backdrop-filter: blur(15px); padding: 2rem; border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+        .header-gym { text-align: center; margin-bottom: 25px; }
+        .rs-title { color: var(--primary-light); font-size: 3.5rem; font-weight: 900; margin: 0; text-transform: uppercase; }
+        .rs-subtitle { color: var(--primary-dark); font-size: 1.2rem; font-weight: 700; margin: 0; text-transform: uppercase; letter-spacing: 3px; }
+        
+        .caja-diaria { background: var(--cash); color: white; padding: 15px; border-radius: 12px; text-align: center; margin-bottom: 20px; font-weight: bold; font-size: 1.4rem; cursor: pointer; position: relative; display: flex; justify-content: center; align-items: center; transition: 0.3s; }
+        .monto-oculto { filter: blur(4px); transition: 0.3s; opacity: 0.3; }
+        .caja-diaria:hover .monto-oculto { filter: blur(0); opacity: 1; }
+
+        .search-box { background: white; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 2px solid var(--primary-light); display: flex; align-items: center; gap: 10px; }
+        .search-input { flex-grow: 1; padding: 10px; border: none; font-size: 16px; outline: none; }
+
+        .panel-control { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; background: rgba(30, 64, 175, 0.05); padding: 15px; border-radius: 15px; align-items: end; margin-bottom: 20px; border: 1px solid rgba(0,0,0,0.05); }
+        .panel-tienda { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; background: rgba(245, 158, 11, 0.05); padding: 15px; border-radius: 15px; align-items: end; margin-bottom: 20px; border: 1px solid rgba(245, 158, 11, 0.2); }
+        
+        .field { display: flex; flex-direction: column; gap: 4px; }
+        label { font-size: 0.6rem; font-weight: bold; color: #475569; text-transform: uppercase; }
+        input { padding: 6px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px; outline: none; }
+        
+        .firma-registro { grid-column: span 2; background: white; padding: 5px; border: 1px solid #cbd5e1; border-radius: 8px; text-align: center; }
+        .txt-legal { font-size: 0.5rem; color: #64748b; line-height: 1; margin-bottom: 3px; text-align: justify; }
+        canvas { background: #fff; cursor: crosshair; touch-action: none; border: 1px dashed #ccc; max-width: 100%; }
+
+        .btn-accion { color: white; border: none; padding: 6px; border-radius: 6px; font-size: 10px; cursor: pointer; margin-top: 3px; font-weight: bold; text-transform: uppercase; }
+        .scroll-container { max-height: 250px; overflow-y: auto; border: 1px solid rgba(0,0,0,0.05); border-radius: 12px; margin-bottom: 20px; background: white; }
+        table { width: 100%; border-collapse: collapse; }
+        th { position: sticky; top: 0; background: var(--dark-bg); color: white; padding: 12px; text-align: left; font-size: 0.75rem; z-index: 5; }
+        td { padding: 10px; border-bottom: 1px solid #f1f5f9; font-size: 0.85rem; }
+        
+        .btn-renew { background: var(--primary-dark); color: white; padding: 6px 10px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 10px; margin-right: 5px; }
+        .btn-delete { background: var(--danger); color: white; padding: 6px 10px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 10px; }
+        .btn-store { background: var(--store); color: white; padding: 8px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 12px; height: 38px; }
+
+        #modalFirma { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 15px; box-shadow: 0 0 50px rgba(0,0,0,0.5); z-index: 1000; text-align: center; }
+        #overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index: 999; }
+    </style>
+</head>
+<body>
+
+<div id="overlay" onclick="cerrarFirma()"></div>
+<div id="modalFirma">
+    <h3 style="margin:0 0 10px 0;">DATOS Y FIRMA DEL SOCIO</h3>
+    <div id="infoSocioModal" style="font-size: 12px; margin-bottom: 10px; text-align: left; padding: 10px; background: #f8fafc; border-radius: 8px;"></div>
+    <img id="imgFirmaSocio" src="" style="border: 1px solid #eee;">
+    <br><button onclick="cerrarFirma()" style="margin-top:15px; padding:8px 20px; cursor:pointer;">CERRAR</button>
+</div>
+
+<div class="container">
+    <div class="header-gym">
+        <h1 class="rs-title">RS ACADEMY</h1>
+        <p class="rs-subtitle">GESTIÓN INTERNA</p>
+    </div>
+
+    <div class="caja-diaria" onclick="mostrarOpcionesCaja()">
+        <span id="labelCaja">💰 RECUENTO DE CAJA</span>
+        <span id="txtCajaHoy" class="monto-oculto" style="display: none; margin-left: 10px;">0.00€</span>
+        <button id="btnBorrarCaja" onclick="event.stopPropagation(); resetearCaja()" style="display: none; position: absolute; right: 20px; background: #b91c1c; color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-size: 11px; font-weight: bold;">BORRAR HOY 🗑️</button>
+    </div>
+
+    <div class="panel-control">
+        <div class="field"><label>Nº Socio</label><input type="number" id="numSocio"></div>
+        <div class="field"><label>Nombre</label><input type="text" id="nombre"></div>
+        <div class="field"><label>DNI/NIE</label><input type="text" id="dni"></div>
+        <div class="field"><label>Dirección</label><input type="text" id="direccion"></div>
+        <div class="field"><label>WhatsApp</label><input type="text" id="telefono"></div>
+        <div class="field"><label>Cuota Mes</label><input type="number" id="montoBase" value="50"></div>
+        <div class="field"><label>Fecha Alta</label><input type="date" id="fechaAlta" onchange="calcularAutomatico()"></div>
+        <div class="field">
+            <label>Cobro Hoy</label>
+            <input type="number" id="montoCobrar" step="0.01">
+            <button class="btn-accion" style="background: #6366f1" onclick="calcularProporcional()">¿PROP.?</button>
+        </div>
+        <div class="field"><label>Día Cobro</label><input type="number" id="diaCobroGeneral" value="1"></div>
+        <div class="field"><label>Próximo Cobro</label><input type="date" id="fechaVencimiento" readonly></div>
+        
+        <div class="firma-registro">
+            <div class="txt-legal">Autorizo el uso de mi imagen (LO 3/2018 y RGPD) para fines promocionales.</div>
+            <canvas id="canvasFirma" width="180" height="50"></canvas><br>
+            <button onclick="limpiarCanvas()" style="font-size: 7px; color: red; border: none; background: none; cursor: pointer;">BORRAR ↺</button>
+        </div>
+
+        <button style="background: var(--dark-bg); color:white; font-weight:bold; height:38px; border-radius:8px; border:none; cursor:pointer;" onclick="agregarSocio()">REGISTRAR</button>
+    </div>
+
+    <div class="search-box">
+        <span>🔍</span>
+        <input type="text" id="inputBusqueda" class="search-input" placeholder="Buscar por nombre o número..." onkeyup="renderizar()">
+    </div>
+
+    <div id="deudaTotal" style="background:var(--danger); color:white; padding:8px 20px; border-radius:50px; display:inline-block; font-weight:bold; margin-bottom:15px; margin-right:10px;">Cuotas: 0€</div>
+    <div id="deudaTienda" style="background:var(--store); color:white; padding:8px 20px; border-radius:50px; display:inline-block; font-weight:bold; margin-bottom:15px;">Tienda: 0€</div>
+
+    <h3 style="color:var(--danger)">🚨 PENDIENTES DE CUOTA</h3>
+    <div class="scroll-container"><table><thead><tr><th>Socio / Datos</th><th>Vence</th><th>Cuota</th><th>Acciones</th></tr></thead><tbody id="listaVencidos"></tbody></table></div>
+
+    <h3 style="color:var(--store)">📦 ENCARGOS ROPA</h3>
+    <div class="panel-tienda">
+        <div class="field"><label>Nombre Socio</label><input type="text" id="nombreSocioTienda" list="listaSugerenciasSocios"><datalist id="listaSugerenciasSocios"></datalist></div>
+        <div class="field"><label>Artículo</label><input type="text" id="articuloTienda"></div>
+        <div class="field"><label>Precio (€)</label><input type="number" id="precioTienda" value="0"></div>
+        <button class="btn-store" onclick="agregarPedido()">ANOTAR ROPA</button>
+    </div>
+    <div class="scroll-container"><table><thead><tr><th>Socio</th><th>Artículo</th><th>Precio</th><th>Acciones</th></tr></thead><tbody id="listaTienda"></tbody></table></div>
+
+    <h3 style="color:var(--primary-dark)">✅ AL DÍA</h3>
+    <div class="scroll-container"><table><thead><tr><th>Socio / Datos</th><th>Vence</th><th>Cuota</th><th>Opciones</th></tr></thead><tbody id="listaActivos"></tbody></table></div>
+
+    <div style="text-align: right;">
+        <input type="file" id="inputImportar" style="display:none" onchange="importarDatos(this)">
+        <button onclick="document.getElementById('inputImportar').click()" style="background:#6366f1; color:white; border:none; padding:8px 15px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:bold; margin-right: 10px;">📤 AÑADIR COPIA</button>
+        <button onclick="exportarDatos()" style="background:#059669; color:white; border:none; padding:8px 15px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:bold;">📥 GUARDAR COPIA</button>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('canvasFirma');
+    const ctx = canvas.getContext('2d');
+    let dibujando = false;
+    canvas.addEventListener('mousedown', () => dibujando = true);
+    canvas.addEventListener('mouseup', () => { dibujando = false; ctx.beginPath(); });
+    canvas.addEventListener('mousemove', dibujar);
+    canvas.addEventListener('touchstart', (e) => { dibujando = true; e.preventDefault(); }, {passive: false});
+    canvas.addEventListener('touchmove', (e) => { dibujar(e.touches[0]); e.preventDefault(); }, {passive: false});
+    function dibujar(e) {
+        if (!dibujando) return;
+        const rect = canvas.getBoundingClientRect();
+        const x = (e.clientX || e.pageX) - rect.left;
+        const y = (e.clientY || e.pageY) - rect.top;
+        ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.strokeStyle = '#000';
+        ctx.lineTo(x, y); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x, y);
+    }
+    function limpiarCanvas() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
+
+    function verFirma(id) {
+        const s = (JSON.parse(localStorage.getItem('rs_academy_data')) || []).find(x => x.id === id);
+        if (s) { 
+            document.getElementById('infoSocioModal').innerHTML = `
+                <strong>DNI:</strong> ${s.dni || 'No registrado'}<br>
+                <strong>Dirección:</strong> ${s.direccion || 'No registrada'}<br>
+                <strong>Tel:</strong> ${s.telefono || 'No registrado'}
+            `;
+            document.getElementById('imgFirmaSocio').src = s.firma || ''; 
+            document.getElementById('modalFirma').style.display = 'block'; 
+            document.getElementById('overlay').style.display = 'block'; 
+        }
+    }
+    function cerrarFirma() { document.getElementById('modalFirma').style.display = 'none'; document.getElementById('overlay').style.display = 'none'; }
+
+    window.onload = function() { document.getElementById('fechaAlta').valueAsDate = new Date(); sugerirSiguienteSocio(); renderizar(); }
+    
+    function sugerirSiguienteSocio() {
+        const s = JSON.parse(localStorage.getItem('rs_academy_data')) || [];
+        const max = s.reduce((p, c) => (parseInt(c.numSocio) > p) ? parseInt(c.numSocio) : p, 0);
+        document.getElementById('numSocio').value = max + 1;
+    }
+
+    function calcularAutomatico() {
+        const fA = document.getElementById('fechaAlta').value;
+        if (!fA) return;
+        let f = new Date(fA); f.setMonth(f.getMonth() + 1);
+        document.getElementById('montoCobrar').value = document.getElementById('montoBase').value;
+        document.getElementById('fechaVencimiento').value = f.toISOString().split('T')[0];
+    }
+
+    function calcularProporcional() {
+        const fA = new Date(document.getElementById('fechaAlta').value);
+        const montoBase = parseFloat(document.getElementById('montoBase').value);
+        const diaCobro = parseInt(document.getElementById('diaCobroGeneral').value);
+        const ultimoDia = new Date(fA.getFullYear(), fA.getMonth() + 1, 0).getDate();
+        const diasRestantes = (ultimoDia - fA.getDate()) + 1;
+        document.getElementById('montoCobrar').value = ((montoBase / ultimoDia) * diasRestantes).toFixed(2);
+        document.getElementById('fechaVencimiento').value = new Date(fA.getFullYear(), fA.getMonth() + 1, diaCobro).toISOString().split('T')[0];
+    }
+
+    function agregarSocio() {
+        const n = document.getElementById('nombre').value;
+        if (!n) return alert("Falta nombre");
+        const firmaData = canvas.toDataURL();
+        const nuevo = { 
+            id: Date.now(), 
+            numSocio: document.getElementById('numSocio').value, 
+            nombre: n, 
+            dni: document.getElementById('dni').value,
+            direccion: document.getElementById('direccion').value,
+            telefono: document.getElementById('telefono').value, 
+            cuotaFija: document.getElementById('montoBase').value, 
+            vencimiento: new Date(document.getElementById('fechaVencimiento').value).getTime(), 
+            firma: firmaData 
+        };
+        let s = JSON.parse(localStorage.getItem('rs_academy_data')) || [];
+        s.push(nuevo);
+        localStorage.setItem('rs_academy_data', JSON.stringify(s));
+        registrarPagoCaja(document.getElementById('montoCobrar').value);
+        location.reload();
+    }
+
+    function registrarPagoCaja(m) {
+        let h = JSON.parse(localStorage.getItem('rs_academy_caja')) || [];
+        h.push({ fecha: new Date().toLocaleDateString(), monto: parseFloat(m) });
+        localStorage.setItem('rs_academy_caja', JSON.stringify(h));
+    }
+
+    function renderizar() {
+        const socios = JSON.parse(localStorage.getItem('rs_academy_data')) || [];
+        const tienda = JSON.parse(localStorage.getItem('rs_academy_store')) || [];
+        const caja = JSON.parse(localStorage.getItem('rs_academy_caja')) || [];
+        const busq = document.getElementById('inputBusqueda').value.toLowerCase();
+        let hoyStr = new Date().toLocaleDateString(), hoyMs = new Date().setHours(0,0,0,0), dC = 0, dT = 0, totC = 0;
+        caja.forEach(p => { if(p.fecha === hoyStr) totC += parseFloat(p.monto); });
+        document.getElementById('txtCajaHoy').innerText = `${totC.toFixed(2)}€`;
+        const lv = document.getElementById('listaVencidos'), la = document.getElementById('listaActivos'), lt = document.getElementById('listaTienda');
+        lv.innerHTML = ''; la.innerHTML = ''; lt.innerHTML = '';
+        socios.forEach(s => {
+            if (s.nombre.toLowerCase().includes(busq) || s.numSocio.toString().includes(busq)) {
+                const vence = s.vencimiento < hoyMs;
+                const ico = `<span onclick="verFirma(${s.id})" style="cursor:pointer; color:#38bdf8">📄</span>`;
+                const fila = `<tr><td>${ico} #${s.numSocio} ${s.nombre}</td><td>${new Date(s.vencimiento).toLocaleDateString()}</td><td>${s.cuotaFija}€</td><td><button class="btn-renew" onclick="renovarSocio(${s.id})">RENOVAR</button><button class="btn-delete" onclick="borrarSocio(${s.id})">🗑️</button></td></tr>`;
+                if(vence) { dC += parseFloat(s.cuotaFija); lv.innerHTML += fila; } else { la.innerHTML += fila; }
+            }
+        });
+        tienda.forEach(p => { dT += parseFloat(p.precio); lt.innerHTML += `<tr><td>#${p.socioNum} ${p.socioNombre}</td><td>${p.articulo}</td><td>${p.precio}€</td><td><button class="btn-delete" onclick="borrarPedido(${p.id})">🗑️</button></td></tr>`; });
+        document.getElementById('deudaTotal').innerText = `Cuotas: ${dC.toFixed(2)}€`;
+        document.getElementById('deudaTienda').innerText = `Tienda: ${dT.toFixed(2)}€`;
+        document.getElementById('listaSugerenciasSocios').innerHTML = socios.map(s => `<option value="${s.nombre}">`).join('');
+    }
+
+    function renovarSocio(id) {
+        let s = JSON.parse(localStorage.getItem('rs_academy_data'));
+        const i = s.findIndex(x => x.id === id);
+        registrarPagoCaja(s[i].cuotaFija);
+        let fV = new Date(s[i].vencimiento); fV.setMonth(fV.getMonth() + 1);
+        s[i].vencimiento = fV.getTime();
+        localStorage.setItem('rs_academy_data', JSON.stringify(s));
+        renderizar();
+    }
+
+    function agregarPedido() {
+        const n = document.getElementById('nombreSocioTienda').value;
+        const s = JSON.parse(localStorage.getItem('rs_academy_data')) || [];
+        const socio = s.find(x => x.nombre.toLowerCase() === n.toLowerCase());
+        if(!socio) return;
+        const ped = { id: Date.now(), socioNum: socio.numSocio, socioNombre: socio.nombre, articulo: document.getElementById('articuloTienda').value, precio: document.getElementById('precioTienda').value };
+        let t = JSON.parse(localStorage.getItem('rs_academy_store')) || [];
+        t.push(ped);
+        localStorage.setItem('rs_academy_store', JSON.stringify(t));
+        renderizar();
+    }
+
+    function borrarSocio(id) { if(confirm("¿Eliminar?")) { let s = JSON.parse(localStorage.getItem('rs_academy_data')) || []; localStorage.setItem('rs_academy_data', JSON.stringify(s.filter(x => x.id !== id))); renderizar(); } }
+    function borrarPedido(id) { let t = JSON.parse(localStorage.getItem('rs_academy_store')) || []; localStorage.setItem('rs_academy_store', JSON.stringify(t.filter(x => x.id !== id))); renderizar(); }
+    function mostrarOpcionesCaja() {
+        const m = document.getElementById('txtCajaHoy'); const b = document.getElementById('btnBorrarCaja'); const l = document.getElementById('labelCaja');
+        m.style.display = 'inline'; b.style.display = 'block'; l.innerText = 'DINERO:';
+        setTimeout(() => { m.style.display = 'none'; b.style.display = 'none'; l.innerText = '💰 RECUENTO DE CAJA'; }, 5000);
+    }
+    function resetearCaja() { if(confirm("¿Vaciar?")) { let h = JSON.parse(localStorage.getItem('rs_academy_caja')) || []; let hoy = new Date().toLocaleDateString(); localStorage.setItem('rs_academy_caja', JSON.stringify(h.filter(p => p.fecha !== hoy))); location.reload(); } }
+    function exportarDatos() { const d = JSON.stringify({s:localStorage.getItem('rs_academy_data'), t:localStorage.getItem('rs_academy_store'), c:localStorage.getItem('rs_academy_caja')}); const blob = new Blob([d], {type:'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'RS_Backup.json'; a.click(); }
+    function importarDatos(input) { const reader = new FileReader(); reader.onload = function(){ const d = JSON.parse(reader.result); localStorage.setItem('rs_academy_data', d.s); localStorage.setItem('rs_academy_store', d.t); localStorage.setItem('rs_academy_caja', d.c); location.reload(); }; reader.readAsText(input.files[0]); }
+</script>
+</body>
+</html>
