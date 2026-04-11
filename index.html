@@ -36,6 +36,8 @@
         td { padding: 10px; border-bottom: 1px solid #f1f5f9; font-size: 0.85rem; }
         
         .btn-renew { background: var(--primary-dark); color: white; padding: 6px 10px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 10px; margin-right: 5px; }
+        .btn-ws { background: #25d366; color: white; padding: 6px 10px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 10px; margin-right: 5px; }
+        .btn-recibo { background: #f97316; color: white; padding: 6px 10px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 10px; margin-right: 5px; }
         .btn-delete { background: var(--danger); color: white; padding: 6px 10px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 10px; }
         .btn-store { background: var(--store); color: white; padding: 8px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 12px; height: 38px; }
 
@@ -47,9 +49,9 @@
 
 <div id="overlay" onclick="cerrarFirma()"></div>
 <div id="modalFirma">
-    <h3 style="margin:0 0 10px 0;">DATOS Y FIRMA DEL SOCIO</h3>
+    <h3 style="margin:0 0 10px 0;">DATOS DEL SOCIO</h3>
     <div id="infoSocioModal" style="font-size: 12px; margin-bottom: 10px; text-align: left; padding: 10px; background: #f8fafc; border-radius: 8px;"></div>
-    <img id="imgFirmaSocio" src="" style="border: 1px solid #eee;">
+    <img id="imgFirmaSocio" src="" style="border: 1px solid #eee; max-width: 100%;">
     <br><button onclick="cerrarFirma()" style="margin-top:15px; padding:8px 20px; cursor:pointer;">CERRAR</button>
 </div>
 
@@ -66,6 +68,7 @@
     </div>
 
     <div class="panel-control">
+        <input type="hidden" id="idEditando">
         <div class="field"><label>Nº Socio</label><input type="number" id="numSocio"></div>
         <div class="field"><label>Nombre</label><input type="text" id="nombre"></div>
         <div class="field"><label>DNI/NIE</label><input type="text" id="dni"></div>
@@ -87,7 +90,7 @@
             <button onclick="limpiarCanvas()" style="font-size: 7px; color: red; border: none; background: none; cursor: pointer;">BORRAR ↺</button>
         </div>
 
-        <button style="background: var(--dark-bg); color:white; font-weight:bold; height:38px; border-radius:8px; border:none; cursor:pointer;" onclick="agregarSocio()">REGISTRAR</button>
+        <button id="btnRegistrar" style="background: var(--dark-bg); color:white; font-weight:bold; height:38px; border-radius:8px; border:none; cursor:pointer;" onclick="agregarSocio()">REGISTRAR</button>
     </div>
 
     <div class="search-box">
@@ -180,29 +183,73 @@
         document.getElementById('fechaVencimiento').value = new Date(fA.getFullYear(), fA.getMonth() + 1, diaCobro).toISOString().split('T')[0];
     }
 
+    function enviarWS(id) {
+        const s = (JSON.parse(localStorage.getItem('rs_academy_data')) || []).find(x => x.id === id);
+        if(!s || !s.telefono) return alert("No hay teléfono");
+        const msg = `Hola ${s.nombre}, te recordamos que tu cuota de RS ACADEMY ha vencido. Saludos!`;
+        window.open(`https://wa.me/34${s.telefono}?text=${encodeURIComponent(msg)}`);
+    }
+
+    function enviarWSImpagado(id) {
+        const s = (JSON.parse(localStorage.getItem('rs_academy_data')) || []).find(x => x.id === id);
+        if(!s || !s.telefono) return alert("No hay teléfono");
+        const msg = `⚠️ RS ACADEMY: Hola ${s.nombre}, detectamos que tienes un recibo impagado. Por favor, contacta con nosotros para regularizar tu situación. Gracias.`;
+        window.open(`https://wa.me/34${s.telefono}?text=${encodeURIComponent(msg)}`);
+    }
+
+    function editarSocio(id) {
+        const s = (JSON.parse(localStorage.getItem('rs_academy_data')) || []).find(x => x.id === id);
+        if(!s) return;
+        document.getElementById('idEditando').value = s.id;
+        document.getElementById('numSocio').value = s.numSocio;
+        document.getElementById('nombre').value = s.nombre;
+        document.getElementById('dni').value = s.dni || '';
+        document.getElementById('direccion').value = s.direccion || '';
+        document.getElementById('telefono').value = s.telefono;
+        document.getElementById('montoBase').value = s.cuotaFija;
+        document.getElementById('btnRegistrar').innerText = "GUARDAR CAMBIOS";
+        document.getElementById('btnRegistrar').style.background = "#f59e0b";
+        window.scrollTo(0,0);
+    }
+
     function agregarSocio() {
+        const idEd = document.getElementById('idEditando').value;
         const n = document.getElementById('nombre').value;
         if (!n) return alert("Falta nombre");
-        const firmaData = canvas.toDataURL();
-        const nuevo = { 
-            id: Date.now(), 
-            numSocio: document.getElementById('numSocio').value, 
-            nombre: n, 
-            dni: document.getElementById('dni').value,
-            direccion: document.getElementById('direccion').value,
-            telefono: document.getElementById('telefono').value, 
-            cuotaFija: document.getElementById('montoBase').value, 
-            vencimiento: new Date(document.getElementById('fechaVencimiento').value).getTime(), 
-            firma: firmaData 
-        };
         let s = JSON.parse(localStorage.getItem('rs_academy_data')) || [];
-        s.push(nuevo);
+        if(idEd) {
+            const i = s.findIndex(x => x.id == idEd);
+            s[i].numSocio = document.getElementById('numSocio').value;
+            s[i].nombre = n;
+            s[i].dni = document.getElementById('dni').value;
+            s[i].direccion = document.getElementById('direccion').value;
+            s[i].telefono = document.getElementById('telefono').value;
+            s[i].cuotaFija = document.getElementById('montoBase').value;
+            document.getElementById('idEditando').value = "";
+            document.getElementById('btnRegistrar').innerText = "REGISTRAR";
+            document.getElementById('btnRegistrar').style.background = "var(--dark-bg)";
+        } else {
+            const firmaData = canvas.toDataURL();
+            const nuevo = { 
+                id: Date.now(), 
+                numSocio: document.getElementById('numSocio').value, 
+                nombre: n, 
+                dni: document.getElementById('dni').value,
+                direccion: document.getElementById('direccion').value,
+                telefono: document.getElementById('telefono').value, 
+                cuotaFija: document.getElementById('montoBase').value, 
+                vencimiento: new Date(document.getElementById('fechaVencimiento').value).getTime(), 
+                firma: firmaData 
+            };
+            s.push(nuevo);
+            registrarPagoCaja(document.getElementById('montoCobrar').value);
+        }
         localStorage.setItem('rs_academy_data', JSON.stringify(s));
-        registrarPagoCaja(document.getElementById('montoCobrar').value);
         location.reload();
     }
 
     function registrarPagoCaja(m) {
+        if(m <= 0) return;
         let h = JSON.parse(localStorage.getItem('rs_academy_caja')) || [];
         h.push({ fecha: new Date().toLocaleDateString(), monto: parseFloat(m) });
         localStorage.setItem('rs_academy_caja', JSON.stringify(h));
@@ -222,7 +269,9 @@
             if (s.nombre.toLowerCase().includes(busq) || s.numSocio.toString().includes(busq)) {
                 const vence = s.vencimiento < hoyMs;
                 const ico = `<span onclick="verFirma(${s.id})" style="cursor:pointer; color:#38bdf8">📄</span>`;
-                const fila = `<tr><td>${ico} #${s.numSocio} ${s.nombre}</td><td>${new Date(s.vencimiento).toLocaleDateString()}</td><td>${s.cuotaFija}€</td><td><button class="btn-renew" onclick="renovarSocio(${s.id})">RENOVAR</button><button class="btn-delete" onclick="borrarSocio(${s.id})">🗑️</button></td></tr>`;
+                // BOTONES WHATSAPP PARA TODOS LOS SOCIOS
+                const btnsWS = `<button class="btn-ws" onclick="enviarWS(${s.id})">AVISO</button><button class="btn-recibo" onclick="enviarWSImpagado(${s.id})">RECIBO</button>`;
+                const fila = `<tr><td>${ico} #${s.numSocio} ${s.nombre}</td><td>${new Date(s.vencimiento).toLocaleDateString()}</td><td>${s.cuotaFija}€</td><td>${btnsWS}<button class="btn-renew" onclick="renovarSocio(${s.id})">RENOVAR</button><button class="btn-renew" style="background:#64748b" onclick="editarSocio(${s.id})">📝</button><button class="btn-delete" onclick="borrarSocio(${s.id})">🗑️</button></td></tr>`;
                 if(vence) { dC += parseFloat(s.cuotaFija); lv.innerHTML += fila; } else { la.innerHTML += fila; }
             }
         });
@@ -244,13 +293,18 @@
 
     function agregarPedido() {
         const n = document.getElementById('nombreSocioTienda').value;
+        const art = document.getElementById('articuloTienda').value;
+        const pre = document.getElementById('precioTienda').value;
         const s = JSON.parse(localStorage.getItem('rs_academy_data')) || [];
         const socio = s.find(x => x.nombre.toLowerCase() === n.toLowerCase());
-        if(!socio) return;
-        const ped = { id: Date.now(), socioNum: socio.numSocio, socioNombre: socio.nombre, articulo: document.getElementById('articuloTienda').value, precio: document.getElementById('precioTienda').value };
+        if(!socio || !art) return alert("Falta socio o artículo");
+        const ped = { id: Date.now(), socioNum: socio.numSocio, socioNombre: socio.nombre, articulo: art, precio: pre };
         let t = JSON.parse(localStorage.getItem('rs_academy_store')) || [];
         t.push(ped);
         localStorage.setItem('rs_academy_store', JSON.stringify(t));
+        document.getElementById('nombreSocioTienda').value = "";
+        document.getElementById('articuloTienda').value = "";
+        document.getElementById('precioTienda').value = "0";
         renderizar();
     }
 
