@@ -81,7 +81,7 @@
             <input type="number" id="montoCobrar" step="0.01">
             <button class="btn-accion" style="background: #6366f1" onclick="calcularProporcional()">¿PROP.?</button>
         </div>
-        <div class="field"><label>Día Cobro</label><input type="number" id="diaCobroGeneral" value="1"></div>
+        <div class="field"><label>Día Cobro</label><input type="number" id="diaCobroGeneral" value="1" oninput="actualizarVencimientoPorDia()"></div>
         <div class="field"><label>Próximo Cobro</label><input type="date" id="fechaVencimiento" readonly></div>
         
         <div class="firma-registro">
@@ -157,7 +157,12 @@
     }
     function cerrarFirma() { document.getElementById('modalFirma').style.display = 'none'; document.getElementById('overlay').style.display = 'none'; }
 
-    window.onload = function() { document.getElementById('fechaAlta').valueAsDate = new Date(); sugerirSiguienteSocio(); renderizar(); }
+    window.onload = function() { 
+        document.getElementById('fechaAlta').valueAsDate = new Date(); 
+        sugerirSiguienteSocio(); 
+        calcularAutomatico();
+        renderizar(); 
+    }
     
     function sugerirSiguienteSocio() {
         const s = JSON.parse(localStorage.getItem('rs_academy_data')) || [];
@@ -165,22 +170,34 @@
         document.getElementById('numSocio').value = max + 1;
     }
 
+    // LÓGICA DE ACTUALIZACIÓN POR DÍA DE COBRO
+    function actualizarVencimientoPorDia() {
+        const fA = document.getElementById('fechaAlta').value;
+        const dia = parseInt(document.getElementById('diaCobroGeneral').value);
+        if (!fA || isNaN(dia)) return;
+        
+        let fecha = new Date(fA);
+        fecha.setMonth(fecha.getMonth() + 1);
+        // Ajustamos al día de cobro deseado
+        fecha.setDate(dia);
+        
+        document.getElementById('fechaVencimiento').value = fecha.toISOString().split('T')[0];
+    }
+
     function calcularAutomatico() {
         const fA = document.getElementById('fechaAlta').value;
         if (!fA) return;
-        let f = new Date(fA); f.setMonth(f.getMonth() + 1);
         document.getElementById('montoCobrar').value = document.getElementById('montoBase').value;
-        document.getElementById('fechaVencimiento').value = f.toISOString().split('T')[0];
+        actualizarVencimientoPorDia();
     }
 
     function calcularProporcional() {
         const fA = new Date(document.getElementById('fechaAlta').value);
         const montoBase = parseFloat(document.getElementById('montoBase').value);
-        const diaCobro = parseInt(document.getElementById('diaCobroGeneral').value);
         const ultimoDia = new Date(fA.getFullYear(), fA.getMonth() + 1, 0).getDate();
         const diasRestantes = (ultimoDia - fA.getDate()) + 1;
         document.getElementById('montoCobrar').value = ((montoBase / ultimoDia) * diasRestantes).toFixed(2);
-        document.getElementById('fechaVencimiento').value = new Date(fA.getFullYear(), fA.getMonth() + 1, diaCobro).toISOString().split('T')[0];
+        actualizarVencimientoPorDia();
     }
 
     function enviarWS(id) {
@@ -269,7 +286,6 @@
             if (s.nombre.toLowerCase().includes(busq) || s.numSocio.toString().includes(busq)) {
                 const vence = s.vencimiento < hoyMs;
                 const ico = `<span onclick="verFirma(${s.id})" style="cursor:pointer; color:#38bdf8">📄</span>`;
-                // BOTONES WHATSAPP PARA TODOS LOS SOCIOS
                 const btnsWS = `<button class="btn-ws" onclick="enviarWS(${s.id})">AVISO</button><button class="btn-recibo" onclick="enviarWSImpagado(${s.id})">RECIBO</button>`;
                 const fila = `<tr><td>${ico} #${s.numSocio} ${s.nombre}</td><td>${new Date(s.vencimiento).toLocaleDateString()}</td><td>${s.cuotaFija}€</td><td>${btnsWS}<button class="btn-renew" onclick="renovarSocio(${s.id})">RENOVAR</button><button class="btn-renew" style="background:#64748b" onclick="editarSocio(${s.id})">📝</button><button class="btn-delete" onclick="borrarSocio(${s.id})">🗑️</button></td></tr>`;
                 if(vence) { dC += parseFloat(s.cuotaFija); lv.innerHTML += fila; } else { la.innerHTML += fila; }
