@@ -170,17 +170,13 @@
         document.getElementById('numSocio').value = max + 1;
     }
 
-    // LÓGICA DE ACTUALIZACIÓN POR DÍA DE COBRO
     function actualizarVencimientoPorDia() {
         const fA = document.getElementById('fechaAlta').value;
         const dia = parseInt(document.getElementById('diaCobroGeneral').value);
         if (!fA || isNaN(dia)) return;
-        
         let fecha = new Date(fA);
         fecha.setMonth(fecha.getMonth() + 1);
-        // Ajustamos al día de cobro deseado
         fecha.setDate(dia);
-        
         document.getElementById('fechaVencimiento').value = fecha.toISOString().split('T')[0];
     }
 
@@ -224,6 +220,11 @@
         document.getElementById('direccion').value = s.direccion || '';
         document.getElementById('telefono').value = s.telefono;
         document.getElementById('montoBase').value = s.cuotaFija;
+        
+        // Poner la fecha de vencimiento actual para que no se pierda al editar
+        const fechaV = new Date(s.vencimiento).toISOString().split('T')[0];
+        document.getElementById('fechaVencimiento').value = fechaV;
+
         document.getElementById('btnRegistrar').innerText = "GUARDAR CAMBIOS";
         document.getElementById('btnRegistrar').style.background = "#f59e0b";
         window.scrollTo(0,0);
@@ -234,7 +235,9 @@
         const n = document.getElementById('nombre').value;
         if (!n) return alert("Falta nombre");
         let s = JSON.parse(localStorage.getItem('rs_academy_data')) || [];
+        
         if(idEd) {
+            // CORRECCIÓN: Actualizar el objeto existente correctamente
             const i = s.findIndex(x => x.id == idEd);
             s[i].numSocio = document.getElementById('numSocio').value;
             s[i].nombre = n;
@@ -242,6 +245,9 @@
             s[i].direccion = document.getElementById('direccion').value;
             s[i].telefono = document.getElementById('telefono').value;
             s[i].cuotaFija = document.getElementById('montoBase').value;
+            // Guardar también la fecha de vencimiento que aparece en el campo
+            s[i].vencimiento = new Date(document.getElementById('fechaVencimiento').value).getTime();
+
             document.getElementById('idEditando').value = "";
             document.getElementById('btnRegistrar').innerText = "REGISTRAR";
             document.getElementById('btnRegistrar').style.background = "var(--dark-bg)";
@@ -262,7 +268,18 @@
             registrarPagoCaja(document.getElementById('montoCobrar').value);
         }
         localStorage.setItem('rs_academy_data', JSON.stringify(s));
-        location.reload();
+        // Resetear campos y renderizar sin recargar toda la página necesariamente
+        limpiarCampos();
+        renderizar();
+    }
+
+    function limpiarCampos() {
+        document.getElementById('nombre').value = "";
+        document.getElementById('dni').value = "";
+        document.getElementById('direccion').value = "";
+        document.getElementById('telefono').value = "";
+        limpiarCanvas();
+        sugerirSiguienteSocio();
     }
 
     function registrarPagoCaja(m) {
